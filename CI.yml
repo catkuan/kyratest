@@ -1,0 +1,25 @@
+name: CI  
+  
+on:  
+  push:  
+    branches:  
+      - main  # 配置要触发CI的分支  
+  
+jobs:  
+  build:  
+    runs-on: ubuntu-latest  # 指定运行环境  
+  
+    steps:  
+      - name: Checkout code  # 步骤名称  
+        uses: actions/checkout@v2  # 使用官方的checkout操作，用于获取代码  
+  
+      - name: Set up Node.js  # 步骤名称  
+        uses: actions/setup-node@v2  # 使用官方的setup-node操作，用于安装和设置Node.js环境  
+        with:  
+          node-version: 14  # 指定Node.js版本  
+  
+      - name: Install dependencies  # 步骤名称  
+        run: npm install  # 安装依赖  
+  
+      - name: Run tests  # 步骤名称  
+        run: npm run test  # 执行测试命令  
