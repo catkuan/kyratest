@@ -1,25 +1,86 @@
-name: CI  
+name: Deploy to EKS  
   
 on:  
   push:  
     branches:  
-      - main  # 配置要触发CI的分支  
+      - main  
   
 jobs:  
-  build:  
-    runs-on: ubuntu-latest  # 指定运行环境  
+  deploy:  
+    runs-on: ubuntu-latest  
   
     steps:  
-      - name: Checkout code  # 步骤名称  
-        uses: actions/checkout@v2  # 使用官方的checkout操作，用于获取代码  
+    - name: Checkout code  
+      uses: actions/checkout@v2  
   
-      - name: Set up Node.js  # 步骤名称  
-        uses: actions/setup-node@v2  # 使用官方的setup-node操作，用于安装和设置Node.js环境  
-        with:  
-          node-version: 14  # 指定Node.js版本  
+    - name: Configure AWS credentials  
+      uses: aws-actions/configure-aws-credentials@v1  
+      with:  
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}  
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  
+        aws-region: <ap-southeast-1> # 替换为您的 AWS 区域  
   
-      - name: Install dependencies  # 步骤名称  
-        run: npm install  # 安装依赖  
+    - name: Configure kubectl  
+      uses: azure/kubectl@v1  
+      with:  
+        version: 'v1.18.8' # 替换为您的 kubectl 版本  
   
-      - name: Run tests  # 步骤名称  
-        run: npm run test  # 执行测试命令  
+    - name: Deploy Nginx  
+      run: |  
+            cat <<EOF | kubectl apply -f -  
+            apiVersion: apps/v1  
+            kind: Deployment  
+            metadata:  
+              name: nginx  
+            spec:  
+              selector:  
+                matchLabels:  
+                  app: nginx  
+              template:  
+                metadata:  
+                  labels:  
+                    app: nginx  
+                spec:  
+                  containers:  
+                  - name: nginx  
+                    image: nginx  
+                    ports:  
+                    - containerPort: 80  
+                    volumeMounts:  
+                    - name: config  
+                      mountPath: /usr/share/nginx/html  
+                      readOnly: true  
+                  volumes:  
+                  - name: config  
+                    configMap:  
+                      name: nginx-config  
+            ---  
+            apiVersion: v1  
+            kind: Service  
+            metadata:  
+              name: nginx  
+            spec:  
+              selector:  
+                app: nginx  
+              ports:  
+              - protocol: TCP  
+                port: 80  
+                targetPort: 80  
+                name: http  
+            ---  
+            apiVersion: v1  
+            kind: ConfigMap  
+            metadata:  
+              name: nginx-config  
+            data:  
+              index.html: |  
+                <!DOCTYPE html>  
+                <html>  
+                <head>  
+                  <title>Hello</title>  
+                </head>  
+                <body>  
+                  <h1>Hello</h1>  
+                </body>  
+                </html>  
+            EOF   
